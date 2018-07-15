@@ -116,6 +116,30 @@ class MoveTree:
             self.play_turn(i, check_winner, filter_transforms)
 
 
+class MoveTreeRepeats:
+    def __init__(self):
+        self.root = Board()
+        self.tree = [[self.root]]
+
+    def count_nodes(self):
+        return sum([len(i) for i in self.tree])
+
+    def play_turn(self, level=0, check_winner=True):
+        if len(self.tree) <= level:
+            raise IndexError
+        if len(self.tree) - 1 == level:
+            self.tree.append([])
+        for board in self.tree[level]:
+            if not (check_winner and board.has_winner()):
+                moves = board.all_moves()
+                for move in moves:
+                    self.tree[level + 1].append(move)
+
+    def play_full_game(self, check_winner=True):
+        for i in range(9):
+            self.play_turn(i, check_winner)
+
+
 def rot_board_cw(b):
     """Rotates the board 90 degrees clockwise and returns a new board"""
     result = []
