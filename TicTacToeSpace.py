@@ -116,7 +116,7 @@ class MoveTree:
             self.play_turn(i, check_winner, filter_transforms)
 
 
-class MoveTreeRepeats:
+class MoveTreeNaive:
     def __init__(self):
         self.root = Board()
         self.tree = [[self.root]]
@@ -173,14 +173,35 @@ def flip_board(b):
 
 
 def test():
-    t = MoveTree()
-    t.play_full_game()
-    print("Number of unique board states in Tic Tac Toe: ", t.count_nodes())
-    print("Number of unique board states on the last turn: ", len(t.tree[9]))
-    ties = [b for i, b in t.tree[9].items() if b.has_winner() == 0]
-    print("Number of ties: ", len(ties))
-    for t in ties:
-        print(t.to_string())
+    naive_noearlyout = MoveTreeNaive()
+    naive_noearlyout.play_full_game(check_winner=False)
+    print("Board states, naive tree, no early out: ", naive_noearlyout.count_nodes())
+    print("Last turn, naive tree, no early out:", len(naive_noearlyout.tree[9]))
+    naive_checkwinner = MoveTreeNaive()
+    naive_checkwinner.play_full_game()
+    print("Board states, naive tree, check for winner: ", naive_checkwinner.count_nodes())
+    print("Last turn, naive tree, check for winner:", len(naive_checkwinner.tree[9]))
+
+    hashed_noearlyouts = MoveTree()
+    hashed_noearlyouts.play_full_game(check_winner=False, filter_transforms=False)
+    print("Board states, hashed tree, uncompressed: ", hashed_noearlyouts.count_nodes())
+    print("Last turn, hashed tree, uncompressed:", len(hashed_noearlyouts.tree[9]))
+    hashed_checkwinner = MoveTree()
+    hashed_checkwinner.play_full_game(check_winner=True, filter_transforms=False)
+    print("Board states, hashed tree, check for winner: ", hashed_checkwinner.count_nodes())
+    print("Last turn, hashed tree, check for winner:", len(hashed_checkwinner.tree[9]))
+    hashed_filtertransforms = MoveTree()
+    hashed_filtertransforms.play_full_game(check_winner=False, filter_transforms=True)
+    print("Board states, hashed tree, filter transforms: ", hashed_filtertransforms.count_nodes())
+    print("Last turn, hashed tree, filter transforms:", len(hashed_filtertransforms.tree[9]))
+    hashed_fullcompressed = MoveTree()
+    hashed_fullcompressed.play_full_game(check_winner=True, filter_transforms=True)
+    print("Board states, hashed tree, fully compressed: ", hashed_fullcompressed.count_nodes())
+    print("Last turn, hashed tree, fully compressed:", len(hashed_fullcompressed.tree[9]))
+    # ties = [b for i, b in t.tree[9].items() if b.has_winner() == 0]
+    # print("Number of ties: ", len(ties))
+    # for t in ties:
+    #     print(t.to_string())
 
 
 test()

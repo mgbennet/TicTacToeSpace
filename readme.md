@@ -1,25 +1,21 @@
 # TicTacToeSpace
 
-This project started because nearly every book on AI mentions in the first 50 pages that tic tac toe is a dumb game for babies in part because its [game tree](https://en.wikipedia.org/wiki/Game_tree) (a sort of map of possible move sets branching from a board state) is piddling in comparison to games like chess, go, or even checkers.
+A [game tree](https://en.wikipedia.org/wiki/Game_tree) can be a brute force method of creating game AI. A game tree graphs the connections between the game states that are possible to achieve through play. If you've ever played a game and though ahead a few turns, like "If I move to A, then my opponent can do X, Y, or Z, but she'll probably play Y, in which case I'll play B...", you've constructed a mental partial game tree. A complete game tree starts from the initial board state and includes every achievable board state. And once you have a complete game tree, you can "solve" a game by determining perfect play from any position.
 
-So I wanted to know how big that tree actually is. And it turns out that it sort of depends on how you calculate it.
+I was curious about the nature of tic-tac-toe's game tree, since nearly every book on AI mentions that it is trivial to solve in compraison to a real game like chess or go. And it's true, go has more permutations in the first three moves then tic-tac-toe does in the entire tree. But there are some lessons to be learned about calculating game trees, and I'd like to share them here.
 
-#### What the hell I'm trying to look at here
+#### The naive approach
+Let's try to get an idea about the overall size of the tree before we simulate it. From the intial board state, player 1 (we'll say X goes first) has 9 possible moves. Each of these board states gives the second player 8 possible moves, for a total of 9 * 8 or 72 board states possible on turn two. Then each of those board states has 7 possible replies, for 9 * 8 * 7 = 504 possible states. Continuing this pattern, and ignoring branches ending early from a win, this means we will have 9 + 9 * 8 + 9 * 8 * 7 + ... + 9!, plus one more for the initial board state, for a total of 986410 nodes in our game tree. Even on 20 year old hardware that's not an unmanagable number of board states, but it is a fairly large tree.
 
-I'm trying
-
-Each node on the game tree is a board state that can be achieved through legal play of the game. The root node an empty board. A node's branches are the board states that the current player's move can result in.
-
-The rules of tic tac toe imply several things about the tree. The game can only last a maximum of 9 moves, and steadily progresses towards either a win for either player, or a tie.
+And even when we simulate out the game tree using the code in this repo and check for winners, the tree still has 549946 nodes.
 
 #### Total possible unique boards
 
-To start, let's see if we can approximate the game tree's size with some math. We can quickly calculate the total number of unique boards where each square in a 3 by 3 grid is either an X, an O, or empty. This is simply 3<sup>9</sup>, or 19683. However we can quickly realize that most of these board states will never be achieved in a game of tic tac toe, as they include boards with multiple three-in-a-row's, or where O has more spaces that X (which can't happen because X goes first).
+But wait a minute, let's do a little more math. We can quickly calculate the total number of unique boards where each square in a 3 by 3 grid is either an X, an O, or empty: 3<sup>9</sup>, or 19683. And this is another over estimate, since it will include board states that can never be achieved legally in a game, like boards with 6 or more X's or where O has more squares than X (which can't happen because X goes first).
 
-#### Failing with factorials
-Ok, so let's try some different math. On her first turn, X has 9 moves available to her. On the next, O has eight, and so on. On the 9th turn, it's 9 * 8 * 7 *... * 2 * 1, or 9!, is 362880. So the total number of nodes in the tree is 9 + 9 * 8 + 9 * 8 * 7 + ... + 9!, plus one more for the initial board state, for a total of 986410. Now this is many times the number of possible states we calculated in the previous step.
+#### Smarter structure
 
-Besides the issue of games ending early when someone wins, many of these board states are identical to others. For example:
+So clearly we're repeating ourselves a lot with the naive method. For example:
 ```
 X - -      X - -      X - -
 - - -  =>  O - -  =>  O X -
@@ -31,8 +27,15 @@ has an identical board state on turn three as
 - X -  =>  O X -  =>  O X -
 - - -      - - -      - - -
 ```
-but our naive factorial method will not merge these two paths together and we end up calculating that there are more game boards on the tree then there are unique boards.
+but our naive method builds two seperate but identical branches for each.
 
-#### Simulate play
+So let's use dictionaries, like a good pythonista. I keep a list of dictionaries, one for each turn, and as calculate new moves, I add them to the appropriate dictionary, assuming it isn't in there already. This gives a tree with 5478 nodes, or 6046 if we don't check for winners and play all the way until the board is full. Much, much better! Additionally this tree calculates in a fraction of the time.
 
-So let's actually simulate the game and see what we see. The TicTacToeSpace.py script can generate a game tree in several ways. The simplest is just to
+#### Check for equivilent boards
+
+But there's another thing that can help reduce the size of the tree. Many board states are equivilent to each other, as they are rotations or flips of other boards. For example, on the first move, playing in the upper left is equivilent to playing in any other corner. So instead of 9 moves on the first turn, the first player is effectively choosing from 3 moves: a corner space, a side space, or the middle space.
+
+|                 | Dont filter transforms | Filter transforms |
+| --------------- | ----------------------:| -----------------:|
+| No check winner |                   6046 |               850 |
+| Check winner    |                   5478 |               765 |
