@@ -12,8 +12,9 @@ class Board:
     def __init__(self, board=[0]*9):
         self.board = board
         self.current_player = 1
-        self.winner = -1
-        self.best_moves = []
+        self.child_boards = []
+        self.winner = -1       # -1 is placeholder, 0 is tie, 1 or 2 mean that player will win
+        self.best_moves = []   # moves that have the best outcomes. indices of self.child_boards
 
     def make_move(self, i):
         """Returns a new board with the current player playing at index i"""
@@ -26,10 +27,12 @@ class Board:
             raise IndexError
 
     def all_moves(self):
+        """Generates a list of board states that the current player can generate with a move"""
         result = [self.make_move(i) for i, val in enumerate(self.board) if val == 0]
         return result
 
     def has_winner(self):
+        """Checks if a player has won"""
         if self.player_wins(1):
             return 1
         elif self.player_wins(2):
@@ -37,9 +40,11 @@ class Board:
         return 0
 
     def player_wins(self, player):
+        """Checks if player wins on this board"""
         # horizontals
         for row in [self.board[i:i+3] for i in range(0, len(self.board), 3)]:
             if row == [player]*3:
+
                 return True
 
         # verticals
@@ -56,6 +61,7 @@ class Board:
         return False
 
     def equivalent_to(self, other_board):
+        """Checks if other_board can be rotated or flipped to match this board"""
         flipped = flip_board(other_board)
         if other_board.board == self.board \
                 or rot_board_ccw(other_board).board == self.board \
@@ -69,6 +75,7 @@ class Board:
         return False
 
     def to_string(self):
+        """Returns an ASCII art version of the current board"""
         result, i = '', 0
         for c in self.board:
             result += renderMap[c] + ' '
@@ -77,14 +84,31 @@ class Board:
                 result += "\n"
         return result
 
-    def to_key(self):
+    def key(self):
+        """Generates string representing board state"""
         return ''.join(str(i) for i in self.board)
+
+    def transform_key(self):
+        """Generates string representing the board state. Boards which can be transformed into each
+        other will generate the same key"""
+        flipped = flip_board(self)
+        equivalent_boards = [
+            self.key(),
+            rot_board_ccw(self).key(),
+            reverse_board(self).key(),
+            rot_board_cw(self).key(),
+            flipped.key(),
+            rot_board_ccw(flipped).key(),
+            reverse_board(flipped).key(),
+            rot_board_cw(flipped).key()
+        ]
+        return max(equivalent_boards)
 
 
 class MoveTree:
     def __init__(self):
         self.root = Board()
-        self.tree = [{self.root.to_key(): self.root}]
+        self.tree = [{self.root.key(): self.root}]
 
     def count_nodes(self):
         return sum([len(i) for i in self.tree])
@@ -98,18 +122,11 @@ class MoveTree:
             if not (check_winner and board.has_winner()):
                 moves = board.all_moves()
                 for move in moves:
-                    key = move.to_key()
-                    if key not in self.tree[level + 1]:
-                        if filter_transforms:
-                            is_unique = True
-                            for j, other_board in self.tree[level + 1].items():
-                                if move.equivalent_to(other_board):
-                                    is_unique = False
-                                    break
-                            if is_unique:
-                                self.tree[level + 1][key] = move
-                        else:
-                            self.tree[level + 1][key] = move
+                    if filter_transforms:
+                        key = move.transform_key()
+                    else:
+                        key = move.key()
+                    self.tree[level + 1][key] = move
 
     def play_full_game(self, check_winner=True, filter_transforms=True):
         for i in range(9):
@@ -172,7 +189,7 @@ def flip_board(b):
     return Board(new_board)
 
 
-def test():
+def main():
     naive_noearlyout = MoveTreeNaive()
     naive_noearlyout.play_full_game(check_winner=False)
     print("Board states, naive tree, no early out: ", naive_noearlyout.count_nodes())
@@ -204,4 +221,5 @@ def test():
     #     print(t.to_string())
 
 
-test()
+if __name__ == '__main__':
+    main()
