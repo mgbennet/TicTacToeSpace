@@ -29,11 +29,17 @@ has an identical board state on turn three as
 ```
 but our naive method builds two separate but identical branches for each.
 
-So let's use dictionaries, like a good pythonista. I keep a list of dictionaries, one for each turn, and as calculate new moves, I add them to the appropriate dictionary, assuming it isn't in there already. This gives a tree with 5478 nodes, or 6046 if we don't check for winners and play all the way until the board is full. Much, much better! Additionally this tree calculates in a fraction of the time.
+So let's use dictionaries, like a good pythonista. I keep a list of dictionaries, one for each turn, and as new moves are calculated, I add them to the appropriate dictionary, assuming it isn't in there already. This gives a tree with 5478 nodes, or 6046 if we don't check for winners and play all the way until the board is full. Much, much better! Additionally this tree is built in a fraction of the time.
 
 #### Check for equivalent boards
 
-But there's another thing that can help reduce the size of the tree. Many board states are equivalent to each other, as they are rotations or flips of other boards. For example, on the first move, playing in the upper left is equivalent to playing in any other corner. So instead of 9 moves on the first turn, the first player is effectively choosing from 3 moves: a corner space, a side space, or the middle space.
+But there's another thing that can help reduce the size of the tree. Many board states are equivalent to each other, as they are rotations or flips of other boards. For example, each of the following board states are equivalent to each other:
+```
+X - -      - - -      - O X     - - X
+O - -      O - -      - - -     - - O
+- - -      X - -      - - -     - - -
+```
+So instead of 9 moves on the first turn, the first player is effectively choosing from 3 moves: a corner space, a side space, or the middle space. With this method and the dictionary method above, we can get the game tree down to a mere 765 nodes.
 
 |                 | Don't filter transforms | Filter transforms |
 | --------------- | -----------------------:| -----------------:|
