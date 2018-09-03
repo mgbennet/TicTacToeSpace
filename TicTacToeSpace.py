@@ -106,55 +106,58 @@ class Board:
 
 
 class MoveTree:
-    def __init__(self):
+    def __init__(self, check_winner=True, filter_transforms=True, num_levels=9):
         self.root = Board()
         self.tree = [{self.root.key(): self.root}]
+        self.check_winner = check_winner
+        self.filter_transforms = filter_transforms
+        for i in range(num_levels):
+            self.play_turn(i)
 
     def count_nodes(self):
         return sum([len(i) for i in self.tree])
 
-    def play_turn(self, level=0, check_winner=True, filter_transforms=True):
+    def play_turn(self, level=0):
         if len(self.tree) <= level:
             raise IndexError
         if len(self.tree) - 1 == level:
             self.tree.append({})
         for i, board in self.tree[level].items():
-            if not (check_winner and board.has_winner()):
+            if not (self.check_winner and board.has_winner()):
                 moves = board.all_moves()
+                child_moves = {}
                 for move in moves:
-                    if filter_transforms:
+                    if self.filter_transforms:
                         key = move.transform_key()
                     else:
                         key = move.key()
                     self.tree[level + 1][key] = move
-
-    def play_full_game(self, check_winner=True, filter_transforms=True):
-        for i in range(9):
-            self.play_turn(i, check_winner, filter_transforms)
+                    child_moves[key] = self.tree[level + 1][key]
+                board.child_boards = list(child_moves.values())
 
 
 class MoveTreeNaive:
-    def __init__(self):
+    def __init__(self, check_winner=True, num_levels=9):
         self.root = Board()
         self.tree = [[self.root]]
+        self.check_winner = check_winner
+        for i in range(num_levels):
+            self.play_turn(i)
 
     def count_nodes(self):
         return sum([len(i) for i in self.tree])
 
-    def play_turn(self, level=0, check_winner=True):
+    def play_turn(self, level=0):
         if len(self.tree) <= level:
             raise IndexError
         if len(self.tree) - 1 == level:
             self.tree.append([])
         for board in self.tree[level]:
-            if not (check_winner and board.has_winner()):
+            if not (self.check_winner and board.has_winner()):
                 moves = board.all_moves()
                 for move in moves:
                     self.tree[level + 1].append(move)
-
-    def play_full_game(self, check_winner=True):
-        for i in range(9):
-            self.play_turn(i, check_winner)
+                    board.child_boards.append(move)
 
 
 def rot_board_cw(b):
@@ -190,29 +193,23 @@ def flip_board(b):
 
 
 def main():
-    naive_noearlyout = MoveTreeNaive()
-    naive_noearlyout.play_full_game(check_winner=False)
+    naive_noearlyout = MoveTreeNaive(check_winner=False)
     print("Board states, naive tree, no early out: ", naive_noearlyout.count_nodes())
     print("Last turn, naive tree, no early out:", len(naive_noearlyout.tree[9]))
     naive_checkwinner = MoveTreeNaive()
-    naive_checkwinner.play_full_game()
     print("Board states, naive tree, check for winner: ", naive_checkwinner.count_nodes())
     print("Last turn, naive tree, check for winner:", len(naive_checkwinner.tree[9]))
 
-    hashed_noearlyouts = MoveTree()
-    hashed_noearlyouts.play_full_game(check_winner=False, filter_transforms=False)
+    hashed_noearlyouts = MoveTree(check_winner=False, filter_transforms=False)
     print("Board states, hashed tree, uncompressed: ", hashed_noearlyouts.count_nodes())
     print("Last turn, hashed tree, uncompressed:", len(hashed_noearlyouts.tree[9]))
-    hashed_checkwinner = MoveTree()
-    hashed_checkwinner.play_full_game(check_winner=True, filter_transforms=False)
+    hashed_checkwinner = MoveTree(check_winner=True, filter_transforms=False)
     print("Board states, hashed tree, check for winner: ", hashed_checkwinner.count_nodes())
     print("Last turn, hashed tree, check for winner:", len(hashed_checkwinner.tree[9]))
-    hashed_filtertransforms = MoveTree()
-    hashed_filtertransforms.play_full_game(check_winner=False, filter_transforms=True)
+    hashed_filtertransforms = MoveTree(check_winner=False, filter_transforms=True)
     print("Board states, hashed tree, filter transforms: ", hashed_filtertransforms.count_nodes())
     print("Last turn, hashed tree, filter transforms:", len(hashed_filtertransforms.tree[9]))
-    hashed_fullcompressed = MoveTree()
-    hashed_fullcompressed.play_full_game(check_winner=True, filter_transforms=True)
+    hashed_fullcompressed = MoveTree(check_winner=True, filter_transforms=True)
     print("Board states, hashed tree, fully compressed: ", hashed_fullcompressed.count_nodes())
     print("Last turn, hashed tree, fully compressed:", len(hashed_fullcompressed.tree[9]))
     # ties = [b for i, b in t.tree[9].items() if b.has_winner() == 0]
