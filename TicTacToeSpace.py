@@ -5,10 +5,14 @@ Creates a tree of all possible board conditions in tic tac toe.
 
 import copy
 
+# Render map for printing boards. Index corresponds the represented board value
 renderMap = ['-', 'X', 'O']
 
 
 class Board:
+    """A class representing a single board state of Tic Tac Toe.
+    Board state is stored in an array, with each item in it representing a square,
+    traversing the board left to right, top to bottom."""
     def __init__(self, board=[0]*9):
         self.board = board
         self.current_player = 1
@@ -44,7 +48,6 @@ class Board:
         # horizontals
         for row in [self.board[i:i+3] for i in range(0, len(self.board), 3)]:
             if row == [player]*3:
-
                 return True
 
         # verticals
@@ -65,11 +68,11 @@ class Board:
         flipped = flip_board(other_board)
         if other_board.board == self.board \
                 or rot_board_ccw(other_board).board == self.board \
-                or reverse_board(other_board).board == self.board \
+                or rot_board_180(other_board).board == self.board \
                 or rot_board_cw(other_board).board == self.board \
                 or flipped.board == self.board \
                 or rot_board_ccw(flipped).board == self.board \
-                or reverse_board(flipped).board == self.board \
+                or rot_board_180(flipped).board == self.board \
                 or rot_board_cw(flipped).board == self.board:
             return True
         return False
@@ -95,11 +98,11 @@ class Board:
         equivalent_boards = [
             self.key(),
             rot_board_ccw(self).key(),
-            reverse_board(self).key(),
+            rot_board_180(self).key(),
             rot_board_cw(self).key(),
             flipped.key(),
             rot_board_ccw(flipped).key(),
-            reverse_board(flipped).key(),
+            rot_board_180(flipped).key(),
             rot_board_cw(flipped).key()
         ]
         return max(equivalent_boards)
@@ -125,18 +128,47 @@ class MoveTree:
         for i, board in self.tree[level].items():
             if not (self.check_winner and board.has_winner()):
                 moves = board.all_moves()
-                child_moves = {}
+                child_moves = []
                 for move in moves:
                     if self.filter_transforms:
                         key = move.transform_key()
                     else:
                         key = move.key()
-                    self.tree[level + 1][key] = move
-                    child_moves[key] = self.tree[level + 1][key]
-                board.child_boards = list(child_moves.values())
+                    if not key in self.tree[level + 1]:
+                        self.tree[level + 1][key] = move
+                    child_moves.append(self.tree[level + 1][key])
+                board.child_boards = child_moves
+
+    def calculate_winners(self):
+        if len(self.tree) != 10:
+            raise RuntimeError("Tree needs to be generated out to the last row before winners can be calculated")
+        for level_index, level in enumerate(self.tree[::-1]):
+            for i, node in level.items():
+                winner = node.has_winner()
+                if winner != 0 or (winner == 0 and level_index == 0):
+                    node.winner = winner
+                elif winner == 0 and len(node.child_boards) == 0 and level != 0:
+                    raise RuntimeError("Found a tying board in the middle of the tree. " + node.board.to_string())
+                else:
+                    moves_by_winner = [[], [], []]
+                    for j, child in enumerate(node.child_boards):
+                        if child.winner == -1:
+                            raise RuntimeError("Child board's winner has not been calculated")
+                        moves_by_winner[child.winner].append(j)
+                    if len(moves_by_winner[node.current_player]) > 0:
+                        node.winner = node.current_player
+                        node.best_moves = moves_by_winner[node.current_player]
+                    elif len(moves_by_winner[0]) > 0:
+                        node.winner = 0
+                        node.best_moves = moves_by_winner[0]
+                    else:
+                        other_player = node.current_player % 2 + 1
+                        node.winner = other_player
+                        node.best_moves = moves_by_winner[other_player]
 
 
 class MoveTreeNaive:
+    """A game tree of Tic Tac Toe boards."""
     def __init__(self, check_winner=True, num_levels=9):
         self.root = Board()
         self.tree = [[self.root]]
@@ -159,6 +191,33 @@ class MoveTreeNaive:
                     self.tree[level + 1].append(move)
                     board.child_boards.append(move)
 
+    def calculate_winners(self):
+        if len(self.tree) != 10:
+            raise RuntimeError("Tree needs to be generated out to the last row before winners can be calculated")
+        for level_index, level in enumerate(self.tree[::-1]):
+            for node in level:
+                winner = node.has_winner()
+                if winner != 0 or (winner == 0 and level_index == 0):
+                    node.winner = winner
+                elif winner == 0 and len(node.child_boards) == 0 and level != 0:
+                    raise RuntimeError("Found a tying board in the middle of the tree. " + node.board.to_string())
+                else:
+                    moves_by_winner = [[], [], []]
+                    for j, child in enumerate(node.child_boards):
+                        if child.winner == -1:
+                            raise RuntimeError("Child board's winner has not been calculated")
+                        moves_by_winner[child.winner].append(j)
+                    if len(moves_by_winner[node.current_player]) > 0:
+                        node.winner = node.current_player
+                        node.best_moves = moves_by_winner[node.current_player]
+                    elif len(moves_by_winner[0]) > 0:
+                        node.winner = 0
+                        node.best_moves = moves_by_winner[0]
+                    else:
+                        other_player = node.current_player % 2 + 1
+                        node.winner = other_player
+                        node.best_moves = moves_by_winner[other_player]
+
 
 def rot_board_cw(b):
     """Rotates the board 90 degrees clockwise and returns a new board"""
@@ -180,15 +239,17 @@ def rot_board_ccw(b):
     return Board(result)
 
 
-def reverse_board(b):
+def rot_board_180(b):
     """Reverses the board listings and returns a new board. Equivalent to a 180 degree rotation"""
     return Board(b.board[::-1])
 
 
 def flip_board(b):
     """Flips the board over the y axis and returns a new board"""
+    new_board = []
     rows = [b.board[i:i+3] for i in range(0, len(b.board), 3)]
-    new_board = [item for sublist in rows for item in sublist[::-1]]
+    for row in rows:
+        new_board.extend([i for i in row[::-1]])
     return Board(new_board)
 
 
@@ -199,6 +260,9 @@ def main():
     naive_checkwinner = MoveTreeNaive()
     print("Board states, naive tree, check for winner: ", naive_checkwinner.count_nodes())
     print("Last turn, naive tree, check for winner:", len(naive_checkwinner.tree[9]))
+    naive_checkwinner.calculate_winners()
+    for turn in naive_checkwinner.tree[1]:
+        print(turn.best_moves)
 
     hashed_noearlyouts = MoveTree(check_winner=False, filter_transforms=False)
     print("Board states, hashed tree, uncompressed: ", hashed_noearlyouts.count_nodes())
@@ -212,10 +276,9 @@ def main():
     hashed_fullcompressed = MoveTree(check_winner=True, filter_transforms=True)
     print("Board states, hashed tree, fully compressed: ", hashed_fullcompressed.count_nodes())
     print("Last turn, hashed tree, fully compressed:", len(hashed_fullcompressed.tree[9]))
-    # ties = [b for i, b in t.tree[9].items() if b.has_winner() == 0]
-    # print("Number of ties: ", len(ties))
-    # for t in ties:
-    #     print(t.to_string())
+    hashed_fullcompressed.calculate_winners()
+    for k, turn in hashed_fullcompressed.tree[1].items():
+        print(turn.best_moves)
 
 
 if __name__ == '__main__':
