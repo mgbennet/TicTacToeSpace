@@ -134,7 +134,7 @@ class MoveTree:
                         key = move.transform_key()
                     else:
                         key = move.key()
-                    if not key in self.tree[level + 1]:
+                    if key not in self.tree[level + 1]:
                         self.tree[level + 1][key] = move
                     child_moves.append(self.tree[level + 1][key])
                 board.child_boards = child_moves
@@ -148,7 +148,7 @@ class MoveTree:
                 if winner != 0 or (winner == 0 and level_index == 0):
                     node.winner = winner
                 elif winner == 0 and len(node.child_boards) == 0 and level != 0:
-                    raise RuntimeError("Found a tying board in the middle of the tree. " + node.board.to_string())
+                    raise RuntimeError("Found a tying board in the middle of the tree. " + node.to_string())
                 else:
                     moves_by_winner = [[], [], []]
                     for j, child in enumerate(node.child_boards):
@@ -169,10 +169,11 @@ class MoveTree:
 
 class MoveTreeNaive:
     """A game tree of Tic Tac Toe boards."""
-    def __init__(self, check_winner=True, num_levels=9):
+    def __init__(self, check_winner=True, filter_transforms=True, num_levels=9):
         self.root = Board()
         self.tree = [[self.root]]
         self.check_winner = check_winner
+        self.filter_transforms = filter_transforms
         for i in range(num_levels):
             self.play_turn(i)
 
@@ -188,8 +189,18 @@ class MoveTreeNaive:
             if not (self.check_winner and board.has_winner()):
                 moves = board.all_moves()
                 for move in moves:
-                    self.tree[level + 1].append(move)
-                    board.child_boards.append(move)
+                    if self.filter_transforms:
+                        unique = True
+                        for sibling in board.child_boards:
+                            if move.equivalent_to(sibling):
+                                unique = False
+                        if unique:
+                            self.tree[level + 1].append(move)
+                            board.child_boards.append(move)
+                    else:
+                        self.tree[level + 1].append(move)
+                        board.child_boards.append(move)
+
 
     def calculate_winners(self):
         if len(self.tree) != 10:
@@ -200,7 +211,7 @@ class MoveTreeNaive:
                 if winner != 0 or (winner == 0 and level_index == 0):
                     node.winner = winner
                 elif winner == 0 and len(node.child_boards) == 0 and level != 0:
-                    raise RuntimeError("Found a tying board in the middle of the tree. " + node.board.to_string())
+                    raise RuntimeError("Found a tying board in the middle of the tree. " + node.to_string())
                 else:
                     moves_by_winner = [[], [], []]
                     for j, child in enumerate(node.child_boards):
@@ -254,15 +265,21 @@ def flip_board(b):
 
 
 def main():
-    naive_noearlyout = MoveTreeNaive(check_winner=False)
+    naive_noearlyout = MoveTreeNaive(check_winner=False, filter_transforms=False)
     print("Board states, naive tree, no early out: ", naive_noearlyout.count_nodes())
     print("Last turn, naive tree, no early out:", len(naive_noearlyout.tree[9]))
-    naive_checkwinner = MoveTreeNaive()
+    naive_checkwinner = MoveTreeNaive(check_winner=True, filter_transforms=False)
     print("Board states, naive tree, check for winner: ", naive_checkwinner.count_nodes())
     print("Last turn, naive tree, check for winner:", len(naive_checkwinner.tree[9]))
     naive_checkwinner.calculate_winners()
     for turn in naive_checkwinner.tree[1]:
         print(turn.best_moves)
+    naive_filtertransforms = MoveTreeNaive(check_winner=False, filter_transforms=True)
+    print("Board states, naive tree, check for winner: ", naive_filtertransforms.count_nodes())
+    print("Last turn, naive tree, check for winner:", len(naive_filtertransforms.tree[9]))
+    naive_fullcompressed = MoveTreeNaive(check_winner=True, filter_transforms=True)
+    print("Board states, naive tree, check for winner: ", naive_fullcompressed.count_nodes())
+    print("Last turn, naive tree, check for winner:", len(naive_fullcompressed.tree[9]))
 
     hashed_noearlyouts = MoveTree(check_winner=False, filter_transforms=False)
     print("Board states, hashed tree, uncompressed: ", hashed_noearlyouts.count_nodes())

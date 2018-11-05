@@ -45,10 +45,10 @@ So instead of 9 moves on the first turn, the first player is effectively choosin
 
 For a naively generated tree:
 
-| | |
-| ---------------- | -----------------------:|
-| No winner check  |                  986410 |
-| Check for winner |                  549946 |
+|                  | Don't filter transforms | Filter transforms |
+| ---------------- | -----------------------:| -----------------:|
+| No winner check  |                  986410 |            101648 |
+| Check for winner |                  549946 |             58524 |
 
 For a tree with no redundant board states:
 
