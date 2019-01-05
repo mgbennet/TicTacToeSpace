@@ -1,6 +1,6 @@
 # TicTacToeSpace
 
-A [game tree](https://en.wikipedia.org/wiki/Game_tree) can be a brute force method of creating game AI. A game tree graphs the connections between the game states that are possible to achieve through play. Thinking a few turns ahead in a game, like "If I move to A, then my opponent can do X, Y, or Z, but she'll probably play Y, in which case I'll play B...", is basically creating a partial game tree in your mind. A complete game tree starts from the initial board state and includes every achievable board state. And once you have a complete game tree, you can "solve" a game (determine perfect play from any position) using a [minamax](https://en.wikipedia.org/wiki/Minimax) decision algorithm.
+A [game tree](https://en.wikipedia.org/wiki/Game_tree) can be a brute force method of creating a simple game's AI. A game tree graphs the connections between the game states that are possible to achieve through play. Thinking a few turns ahead in a game, like "If I move to A, then my opponent can do X, Y, or Z, but she'll probably play Y, in which case I'll play B...", is basically creating a partial game tree in your mind. A complete game tree starts from the initial board state and includes every achievable board state. And once you have a complete game tree, you can "solve" a game (determine perfect play from any position) using a [minamax](https://en.wikipedia.org/wiki/Minimax) decision algorithm.
 
 I was curious about the nature of tic-tac-toe's game tree, since nearly every book on AI mentions that it is trivial to solve in comparison to a real game like chess or go. After all, go has more possible board states in the first three moves then tic-tac-toe does in the entire tree. But there are some lessons to be learned by calculating game trees, especially regarding data structure efficiency.
 
@@ -11,7 +11,7 @@ And even when we simulate out the game tree using the code in this repo and chec
 
 #### Total possible unique boards
 
-But wait a minute, let's do a little more math. We can quickly calculate the total number of unique boards where each square in a 3 by 3 grid is either an X, an O, or empty: 3<sup>9</sup>, or 19683. And this is another over estimate, since it will include board states that can never be achieved legally in a game, like boards with 6 or more X's or where O has more squares than X (which can't happen because X goes first).
+But wait a minute, let's do a little more math. We can quickly calculate the total number of unique boards where each square in a 3 by 3 grid is either an X, an O, or empty: 3<sup>9</sup>, or 19683. And this is another over estimate, since it includes board states that can never be achieved legally in a game, like boards with two winners, 6 or more X's, or where O has more squares than X (which can't happen because X goes first).
 
 #### Smarter structure
 
@@ -29,15 +29,15 @@ has an identical board state on turn three as
 ```
 but our naive method builds two separate but identical branches for each.
 
-So let's use dictionaries, using a string derived from the board state as the board's key. I keep a list of dictionaries, one for each turn, and as new moves are calculated, I add them to that turn's dictionary, assuming it isn't in there already. This gives a tree with 5478 nodes, or 6046 if we don't check for winners and play all the way until the board is full. Much, much better! Additionally this tree is built in a fraction of the time.
+We need a way to quickly determine if a board already exists in our structure. So let's use dictionaries, using a string derived from the board state as the board's key. I keep lists of dictionaries, one for each turn, and as new moves are calculated, I add them to that turn's dictionary, assuming it isn't in there already. This gives a tree with 5478 nodes, or 6046 if we don't check for winners and play all the way until the board is full. Much, much better! Additionally this tree is built in a fraction of the time.
 
 #### Check for equivalent boards
 
 But there's another thing that can help reduce the size of the tree. Many board states are equivalent to each other, as they are rotations or flips of other boards. For example, each of the following board states are equivalent to each other:
 ```
-X - -      - - -      - O X     - - X
-O - -      O - -      - - -     - - O
-- - -      X - -      - - -     - - -
+X - -      - - -      - O X      - - X
+O - -  ==  O - -  ==  - - -  ==  - - O
+- - -      X - -      - - -      - - -
 ```
 So instead of 9 moves on the first turn, the first player is effectively choosing from 3 moves: a corner space, a side space, or the middle space. With this method and the dictionary method above, we can get the game tree down to a mere 765 nodes.
 

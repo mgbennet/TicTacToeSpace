@@ -194,13 +194,13 @@ class MoveTreeNaive:
                         for sibling in board.child_boards:
                             if move.equivalent_to(sibling):
                                 unique = False
+                                break
                         if unique:
                             self.tree[level + 1].append(move)
                             board.child_boards.append(move)
                     else:
                         self.tree[level + 1].append(move)
                         board.child_boards.append(move)
-
 
     def calculate_winners(self):
         if len(self.tree) != 10:
@@ -275,11 +275,11 @@ def main():
     for turn in naive_checkwinner.tree[1]:
         print(turn.best_moves)
     naive_filtertransforms = MoveTreeNaive(check_winner=False, filter_transforms=True)
-    print("Board states, naive tree, check for winner: ", naive_filtertransforms.count_nodes())
-    print("Last turn, naive tree, check for winner:", len(naive_filtertransforms.tree[9]))
+    print("Board states, naive tree, filter transforms: ", naive_filtertransforms.count_nodes())
+    print("Last turn, naive tree, filter transforms:", len(naive_filtertransforms.tree[9]))
     naive_fullcompressed = MoveTreeNaive(check_winner=True, filter_transforms=True)
-    print("Board states, naive tree, check for winner: ", naive_fullcompressed.count_nodes())
-    print("Last turn, naive tree, check for winner:", len(naive_fullcompressed.tree[9]))
+    print("Board states, naive tree, fully compressed: ", naive_fullcompressed.count_nodes())
+    print("Last turn, naive tree, fully compressed:", len(naive_fullcompressed.tree[9]))
 
     hashed_noearlyouts = MoveTree(check_winner=False, filter_transforms=False)
     print("Board states, hashed tree, uncompressed: ", hashed_noearlyouts.count_nodes())
